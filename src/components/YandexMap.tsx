@@ -57,23 +57,21 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
         console.log('Маркер:', street.name, coords[0]);
         return;
       }
-      // Если есть линия — рисуем линию
-      const polyline = new window.ymaps.Polyline(
-        coords,
-        { balloonContent: street.name },
-        {
+      // Если есть линия — строим маршрут по дорогам между точками
+      window.ymaps.route(coords).then((route: any) => {
+        route.getPaths().options.set({
           strokeColor: isLearned ? '#4CAF50' : '#FF0000',
           strokeWidth: 8,
           opacity: 1,
           zIndex: 1000
+        });
+        mapInstanceRef.current.geoObjects.add(route);
+        objectsRef.current.push(route);
+        if (isLearned) {
+          mapInstanceRef.current.setCenter(coords[0], 15, { duration: 300 });
         }
-      );
-      mapInstanceRef.current.geoObjects.add(polyline);
-      objectsRef.current.push(polyline);
-      if (isLearned) {
-        mapInstanceRef.current.setCenter(coords[0], 15, { duration: 300 });
-      }
-      console.log('Линия:', street.name, coords);
+        console.log('Маршрут:', street.name, route.getPaths().get(0).getCoordinates());
+      });
     });
   }, [streets, learnedStreets]);
 
