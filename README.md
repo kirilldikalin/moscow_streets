@@ -14,8 +14,8 @@
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/yourusername/moscow-streets.git
-cd moscow-streets
+git clone https://github.com/kirilldikalin/moscow_streets.git
+cd moscow_streets
 ```
 
 2. Установите зависимости:
@@ -53,4 +53,4 @@ npm start
 
 ## Лицензия
 
-MIT 
+MIT
