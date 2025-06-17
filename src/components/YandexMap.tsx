@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { Street } from '../data/districts';
 
 declare global {
@@ -18,21 +18,7 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   const mapInstanceRef = useRef<any>(null);
   const objectsRef = useRef<any[]>([]);
 
-  const initMap = () => {
-    window.ymaps.ready(() => {
-      if (mapRef.current) {
-        mapInstanceRef.current = new window.ymaps.Map(mapRef.current, {
-          center: [55.76, 37.64], // Центр Москвы
-          zoom: 12,
-          controls: ['zoomControl', 'fullscreenControl']
-        });
-        console.log('Передано в карту:', streets);
-        updateStreets();
-      }
-    });
-  };
-
-  const updateStreets = () => {
+  const updateStreets = useCallback(() => {
     if (!mapInstanceRef.current) return;
     
     // Очистка предыдущих объектов
@@ -89,7 +75,21 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
       }
       console.log('Линия:', street.name, coords);
     });
-  };
+  }, [streets, learnedStreets]);
+
+  const initMap = useCallback(() => {
+    window.ymaps.ready(() => {
+      if (mapRef.current) {
+        mapInstanceRef.current = new window.ymaps.Map(mapRef.current, {
+          center: [55.76, 37.64], // Центр Москвы
+          zoom: 12,
+          controls: ['zoomControl', 'fullscreenControl']
+        });
+        console.log('Передано в карту:', streets);
+        updateStreets();
+      }
+    });
+  }, [updateStreets]);
 
   useEffect(() => {
     // Загрузка API Яндекс Карт
@@ -102,13 +102,13 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
     return () => {
       document.body.removeChild(script);
     };
-  }, []);
+  }, [initMap]);
 
   useEffect(() => {
     if (mapInstanceRef.current) {
       updateStreets();
     }
-  }, [streets, learnedStreets]);
+  }, [updateStreets]);
 
   useEffect(() => {
     if (mapInstanceRef.current) {
@@ -117,7 +117,7 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
     }
   }, []);
 
-  useImperativeHandle(ref, () => updateStreets);
+  useImperativeHandle(ref, () => updateStreets, [updateStreets]);
 
   return <div ref={mapRef} style={{ width: '100%', height: '100%' }} />;
 });
