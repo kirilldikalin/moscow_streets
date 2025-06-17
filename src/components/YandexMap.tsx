@@ -89,7 +89,7 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
         updateStreets();
       }
     });
-  }, [updateStreets]);
+  }, [updateStreets, streets]);
 
   useEffect(() => {
     // Загрузка API Яндекс Карт
