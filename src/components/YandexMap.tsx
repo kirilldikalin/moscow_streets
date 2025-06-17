@@ -58,20 +58,41 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
         return;
       }
       // Если есть линия — строим маршрут по дорогам между точками
-      window.ymaps.route(coords).then((route: any) => {
-        route.getPaths().options.set({
-          strokeColor: isLearned ? '#4CAF50' : '#FF0000',
-          strokeWidth: 8,
-          opacity: 1,
-          zIndex: 1000
+      window.ymaps
+        .route(coords)
+        .then((route: any) => {
+          route.getPaths().options.set({
+            strokeColor: isLearned ? '#4CAF50' : '#FF0000',
+            strokeWidth: 8,
+            opacity: 1,
+            zIndex: 1000
+          });
+          mapInstanceRef.current.geoObjects.add(route);
+          objectsRef.current.push(route);
+          if (isLearned) {
+            mapInstanceRef.current.setCenter(coords[0], 15, { duration: 300 });
+          }
+          console.log('Маршрут:', street.name, route.getPaths().get(0).getCoordinates());
+        })
+        .catch(() => {
+          // Если маршрут построить не удалось, рисуем простую линию
+          const polyline = new window.ymaps.Polyline(
+            coords,
+            { balloonContent: street.name },
+            {
+              strokeColor: isLearned ? '#4CAF50' : '#FF0000',
+              strokeWidth: 8,
+              opacity: 1,
+              zIndex: 1000
+            }
+          );
+          mapInstanceRef.current.geoObjects.add(polyline);
+          objectsRef.current.push(polyline);
+          if (isLearned) {
+            mapInstanceRef.current.setCenter(coords[0], 15, { duration: 300 });
+          }
+          console.log('Линия (fallback):', street.name, coords);
         });
-        mapInstanceRef.current.geoObjects.add(route);
-        objectsRef.current.push(route);
-        if (isLearned) {
-          mapInstanceRef.current.setCenter(coords[0], 15, { duration: 300 });
-        }
-        console.log('Маршрут:', street.name, route.getPaths().get(0).getCoordinates());
-      });
     });
   }, [streets, learnedStreets]);
 
