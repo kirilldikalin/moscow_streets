@@ -18,32 +18,6 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   const mapInstanceRef = useRef<any>(null);
   const objectsRef = useRef<any[]>([]);
 
-  useEffect(() => {
-    // Загрузка API Яндекс Карт
-    const script = document.createElement('script');
-    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=302af765-6c16-4994-992f-ec50c7f8746c&lang=ru_RU';
-    script.async = true;
-    script.onload = initMap;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      updateStreets();
-    }
-  }, [streets, learnedStreets]);
-
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      const marker = new window.ymaps.Placemark([55.75, 37.61], { balloonContent: 'Тестовый маркер' });
-      mapInstanceRef.current.geoObjects.add(marker);
-    }
-  }, []);
-
   const initMap = () => {
     window.ymaps.ready(() => {
       if (mapRef.current) {
@@ -59,6 +33,8 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   };
 
   const updateStreets = () => {
+    if (!mapInstanceRef.current) return;
+    
     // Очистка предыдущих объектов
     objectsRef.current.forEach(obj => {
       mapInstanceRef.current.geoObjects.remove(obj);
@@ -114,6 +90,32 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
       console.log('Линия:', street.name, coords);
     });
   };
+
+  useEffect(() => {
+    // Загрузка API Яндекс Карт
+    const script = document.createElement('script');
+    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=302af765-6c16-4994-992f-ec50c7f8746c&lang=ru_RU';
+    script.async = true;
+    script.onload = initMap;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      updateStreets();
+    }
+  }, [streets, learnedStreets]);
+
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      const marker = new window.ymaps.Placemark([55.75, 37.61], { balloonContent: 'Тестовый маркер' });
+      mapInstanceRef.current.geoObjects.add(marker);
+    }
+  }, []);
 
   useImperativeHandle(ref, () => updateStreets);
 

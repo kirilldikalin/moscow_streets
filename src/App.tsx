@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { DISTRICTS } from './data/districts';
-import { STREETS } from './data/streets';
 import YandexMap from './components/YandexMap';
 
 const API_KEY = '302af765-6c16-4994-992f-ec50c7f8746c';
