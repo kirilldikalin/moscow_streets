@@ -111,15 +111,16 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   }, [updateStreets, streets]);
 
   useEffect(() => {
-    // Загрузка API Яндекс Карт
+    if (document.getElementById('yandex-maps-script')) return;
     const script = document.createElement('script');
+    script.id = 'yandex-maps-script';
     script.src = 'https://api-maps.yandex.ru/2.1/?apikey=302af765-6c16-4994-992f-ec50c7f8746c&lang=ru_RU';
     script.async = true;
     script.onload = initMap;
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      // Не удаляем скрипт, чтобы не было повторной загрузки
     };
   }, [initMap]);
 
