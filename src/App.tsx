@@ -114,30 +114,46 @@ function App() {
 
   // Получение координат улицы через API Яндекса
   const fetchStreetCoords = async (streetName: string) => {
-    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${API_KEY}&geocode=Москва,${encodeURIComponent(streetName)}&format=json&results=1`;
+    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${API_KEY}&geocode=Москва,${encodeURIComponent(streetName)}&format=json&results=5&kind=street`;
     try {
       const res = await fetch(url);
       const data = await res.json();
-      const geoObject = data.response.GeoObjectCollection.featureMember[0].GeoObject;
-      
-      // Пробуем получить LineString (если есть)
-      if (geoObject.geometry?.GeometryCollection) {
-        const line = geoObject.geometry.GeometryCollection.geometries.find((g: any) => g.type === 'LineString');
-        if (line) {
-          // ВНИМАНИЕ: Яндекс возвращает [lon, lat], а нам нужен [lat, lon]
-          const coords = line.coordinates.map((c: any) => [parseFloat(c[1]), parseFloat(c[0])]);
-          console.log('LineString coords:', coords);
+
+      for (const featureMember of data.response.GeoObjectCollection.featureMember) {
+        const geoObject = featureMember.GeoObject;
+
+        if (geoObject.metaDataProperty.GeocoderMetaData.kind !== 'street') {
+          continue;
+        }
+
+        // Пытаемся найти LineString в GeometryCollection
+        if (geoObject.geometry?.GeometryCollection) {
+          const line = geoObject.geometry.GeometryCollection.geometries.find((g: any) => g.type === 'LineString');
+          if (line) {
+            const coords = line.coordinates.map((c: any) => [parseFloat(c[1]), parseFloat(c[0])]);
+            console.log('Found LineString in GeometryCollection:', coords);
+            return coords;
+          }
+        }
+
+        // Пытаемся найти LineString напрямую в geometry
+        if (geoObject.geometry?.type === 'LineString') {
+          const coords = geoObject.geometry.coordinates.map((c: any) => [parseFloat(c[1]), parseFloat(c[0])]);
+          console.log('Found direct LineString:', coords);
           return coords;
         }
       }
-      
-      // Если нет LineString, используем точку
-      const pos = geoObject.Point.pos.split(' ');
+
+      // Если LineString не найден, используем точку из первого результата
+      const firstGeoObject = data.response.GeoObjectCollection.featureMember[0].GeoObject;
+      const pos = firstGeoObject.Point.pos.split(' ');
       const coords = [[parseFloat(pos[1]), parseFloat(pos[0])], [parseFloat(pos[1]), parseFloat(pos[0])]];
-      console.log('Point coords:', coords);
+      console.log('LineString not found, falling back to Point:', coords);
       return coords;
+
     } catch (e) {
       console.error('Ошибка получения координат:', e);
+      toast.error('Произошла ошибка при получении координат улицы.');
       return [];
     }
   };
