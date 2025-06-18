@@ -17,9 +17,11 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const objectsRef = useRef<any[]>([]);
+  const scriptLoadedRef = useRef<boolean>(false);
 
   const updateStreets = useCallback(() => {
     if (!mapInstanceRef.current) return;
+    console.log('Updating streets:', streets);
     
     // Очистка предыдущих объектов
     objectsRef.current.forEach(obj => {
@@ -57,6 +59,7 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
         console.log('Маркер:', street.name, coords[0]);
         return;
       }
+
       // Если есть линия — строим маршрут по дорогам между точками
       window.ymaps
         .route(coords)
@@ -97,35 +100,48 @@ const YandexMap = forwardRef<any, YandexMapProps>(({ streets, learnedStreets, on
   }, [streets, learnedStreets]);
 
   const initMap = useCallback(() => {
+    if (!window.ymaps) return;
+    
     window.ymaps.ready(() => {
-      if (mapRef.current) {
+      if (mapRef.current && !mapInstanceRef.current) {
         mapInstanceRef.current = new window.ymaps.Map(mapRef.current, {
           center: [55.76, 37.64], // Центр Москвы
           zoom: 12,
           controls: ['zoomControl', 'fullscreenControl']
         });
-        console.log('Передано в карту:', streets);
+        console.log('Карта инициализирована');
         updateStreets();
       }
     });
-  }, [updateStreets, streets]);
+  }, [updateStreets]);
 
   useEffect(() => {
-    if (document.getElementById('yandex-maps-script')) return;
-    const script = document.createElement('script');
-    script.id = 'yandex-maps-script';
-    script.src = 'https://api-maps.yandex.ru/2.1/?apikey=302af765-6c16-4994-992f-ec50c7f8746c&lang=ru_RU';
-    script.async = true;
-    script.onload = initMap;
-    document.body.appendChild(script);
+    // Проверяем, не загружен ли уже скрипт
+    if (document.getElementById('yandex-maps-script')) {
+      scriptLoadedRef.current = true;
+      initMap();
+      return;
+    }
+
+    if (!scriptLoadedRef.current) {
+      const script = document.createElement('script');
+      script.id = 'yandex-maps-script';
+      script.src = 'https://api-maps.yandex.ru/2.1/?apikey=302af765-6c16-4994-992f-ec50c7f8746c&lang=ru_RU';
+      script.async = true;
+      script.onload = () => {
+        scriptLoadedRef.current = true;
+        initMap();
+      };
+      document.body.appendChild(script);
+    }
 
     return () => {
-      // Не удаляем скрипт, чтобы не было повторной загрузки
+      // Не удаляем скрипт при размонтировании
     };
   }, [initMap]);
 
   useEffect(() => {
-    if (mapInstanceRef.current) {
+    if (scriptLoadedRef.current && mapInstanceRef.current) {
       updateStreets();
     }
   }, [updateStreets]);

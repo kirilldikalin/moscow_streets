@@ -90,12 +90,14 @@ function App() {
 
   useEffect(() => {
     const savedProgress = localStorage.getItem('learnedStreets');
+    const savedStreets = localStorage.getItem('streets');
     if (savedProgress) setLearnedStreets(JSON.parse(savedProgress));
-    // Можно загрузить streets из localStorage, если нужно
+    if (savedStreets) setStreets(JSON.parse(savedStreets));
   }, []);
 
   useEffect(() => {
     localStorage.setItem('learnedStreets', JSON.stringify(learnedStreets));
+    localStorage.setItem('streets', JSON.stringify(streets));
     const newProgress: Record<string, number> = {};
     DISTRICTS.forEach(district => {
       const districtStreets = streets.filter(street => street.district === district.name);
@@ -113,12 +115,13 @@ function App() {
   // Получение координат улицы через API Яндекса
   const fetchStreetCoords = async (streetName: string) => {
     const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${API_KEY}&geocode=Москва,${encodeURIComponent(streetName)}&format=json&results=1`;
-    const res = await fetch(url);
-    const data = await res.json();
     try {
+      const res = await fetch(url);
+      const data = await res.json();
       const geoObject = data.response.GeoObjectCollection.featureMember[0].GeoObject;
+      
       // Пробуем получить LineString (если есть)
-      if (geoObject.geometry && geoObject.geometry.GeometryCollection) {
+      if (geoObject.geometry?.GeometryCollection) {
         const line = geoObject.geometry.GeometryCollection.geometries.find((g: any) => g.type === 'LineString');
         if (line) {
           // ВНИМАНИЕ: Яндекс возвращает [lon, lat], а нам нужен [lat, lon]
@@ -127,23 +130,30 @@ function App() {
           return coords;
         }
       }
+      
       // Если нет LineString, используем точку
       const pos = geoObject.Point.pos.split(' ');
       const coords = [[parseFloat(pos[1]), parseFloat(pos[0])], [parseFloat(pos[1]), parseFloat(pos[0])]];
       console.log('Point coords:', coords);
       return coords;
     } catch (e) {
-      console.log('Ошибка получения координат:', e);
+      console.error('Ошибка получения координат:', e);
       return [];
     }
   };
 
   const handleInputSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const normalizedInput = inputValue.trim().toLowerCase();
-    let foundStreet = streets.find(street => street.name.toLowerCase() === normalizedInput);
+    const normalizedInput = inputValue.trim();
+    if (!normalizedInput) return;
+
+    let foundStreet = streets.find(street => 
+      street.name.toLowerCase() === normalizedInput.toLowerCase()
+    );
+
     if (!foundStreet) {
-      const coords = await fetchStreetCoords(inputValue.trim());
+      const coords = await fetchStreetCoords(normalizedInput);
+      
       if (
         coords.length === 0 ||
         isNaN(coords[0][0]) || isNaN(coords[0][1]) ||
@@ -153,32 +163,43 @@ function App() {
         setInputValue('');
         return;
       }
+
       let district = '';
       for (const d of DISTRICTS) {
-        if (d.name && inputValue.match(new RegExp(d.name, 'i'))) {
+        if (d.name && normalizedInput.match(new RegExp(d.name, 'i'))) {
           district = d.name;
           break;
         }
       }
+
       if (!district) {
         district = 'Неизвестно';
         toast.warn('Район не определён, улица будет добавлена без района');
       }
-      foundStreet = { name: inputValue.trim(), district, coordinates: coords };
+
+      foundStreet = { 
+        name: normalizedInput, 
+        district, 
+        coordinates: coords 
+      };
+
       setStreets(prev => {
-        const newArr = [...prev, foundStreet];
-        setTimeout(() => {
-          if (mapUpdateRef.current) mapUpdateRef.current();
-        }, 100);
-        return newArr;
+        const newStreets = [...prev, foundStreet];
+        console.log('Добавлена новая улица:', foundStreet);
+        if (mapUpdateRef.current) {
+          setTimeout(() => mapUpdateRef.current(), 100);
+        }
+        return newStreets;
       });
     }
+
     if (!learnedStreets.includes(foundStreet.name)) {
-      setLearnedStreets([...learnedStreets, foundStreet.name]);
+      setLearnedStreets(prev => [...prev, foundStreet.name]);
       toast.success(`Поздравляем! Вы выучили улицу ${foundStreet.name}`);
     } else {
       toast.info('Эта улица уже изучена');
     }
+
     setInputValue('');
   };
 
@@ -251,24 +272,31 @@ function App() {
             ))}
           </ProgressSection>
 
-          <div>
-            <Button onClick={handleClearProgress}>Очистить прогресс</Button>
-            <Button onClick={handleExportProgress}>Экспорт прогресса</Button>
+          <Button onClick={handleClearProgress}>
+            Сбросить прогресс
+          </Button>
+          <Button onClick={handleExportProgress}>
+            Экспорт прогресса
+          </Button>
+          <label>
+            <Button as="span">
+              Импорт прогресса
+            </Button>
             <input
               type="file"
               accept=".json"
-              onChange={handleImportProgress}
               style={{ display: 'none' }}
-              id="import-input"
+              onChange={handleImportProgress}
             />
-            <Button onClick={() => document.getElementById('import-input')?.click()}>
-              Импорт прогресса
-            </Button>
-          </div>
+          </label>
         </Sidebar>
 
         <MapContainer>
-          <YandexMap ref={mapUpdateRef} streets={streets} learnedStreets={learnedStreets} />
+          <YandexMap
+            ref={mapUpdateRef}
+            streets={streets}
+            learnedStreets={learnedStreets}
+          />
         </MapContainer>
       </MainContent>
     </AppContainer>
